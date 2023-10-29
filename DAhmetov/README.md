@@ -1,10 +1,10 @@
-### An implementaion of Lambda mini-language
+### An implementaion of miniML
 
 This is a homework for functional programming course.
 
 License: LGPL for implementation code + WTFPL for test examles in miniLanguage
 
-Author: Vasy Pupkin, vasya@pupkin.com
+Author: Ahmetov Temerlan temerlan.axmetov.75@mail.ru
 
 Features done (append only):
 
