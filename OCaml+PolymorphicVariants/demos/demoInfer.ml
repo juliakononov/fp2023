@@ -1,10 +1,10 @@
-(** Copyright 2021-2022, Nikita Nemakin *)
+(** Copyright 2023-2024, Nikita Nemakin *)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
-open Ocaml_pv.Parser
+open Ocaml_pv.Infer
 
 let () =
   let str = In_channel.input_all stdin in
-  test_parse str
+  test_infer str
 ;;

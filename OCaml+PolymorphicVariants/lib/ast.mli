@@ -7,8 +7,8 @@ type id = string [@@deriving show { with_path = false }]
 
 (** Used in {let} expr *)
 type rec_flag =
-  | Rec
-  | Nonrec
+  | Rec (** recursive *)
+  | Nonrec (** non-recursive *)
 [@@deriving show { with_path = false }]
 
 type bin_op =
