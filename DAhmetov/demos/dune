@@ -1,10 +1,23 @@
 (executable
- (name demo_fact)
- (modules demo_fact)
- (public_name demo_fact)
- (libraries DAhmetov.Lib)
+ (name demoParse)
+ (modules demoParse)
+ (public_name demoParse)
+ (libraries DAhmetov.Lib stdio)
+ (instrumentation
+  (backend bisect_ppx)))
+
+(executable
+ (name demoInterpret)
+ (modules demoInterpret)
+ (public_name demoInterpret)
+ (libraries DAhmetov.Lib stdio)
  (instrumentation
   (backend bisect_ppx)))
 
 (cram
- (deps %{bin:demo_fact}))
+ (applies_to demoParse)
+ (deps ./demoParse.exe))
+
+(cram
+ (applies_to demoInterpret)
+ (deps ./demoInterpret.exe))

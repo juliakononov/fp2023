@@ -1,10 +1,9 @@
-(** Copyright 2021-2023, Lesh79 *)
+(** Copyright 2023-2024, Lesh79 *)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
 open Angstrom
 open Ast
-open Format
 
 type input = char list
 
@@ -42,9 +41,7 @@ let is_keyword = function
   | "with"
   | "if"
   | "then"
-  | "else"
-  | "for"
-  | "while" -> true
+  | "else" -> true
   | _ -> false
 ;;
 
@@ -60,11 +57,12 @@ let is_iddent_symbol = function
 ;;
 
 let empty = take_while is_empty
-let empty1 = take_while1 is_empty
 let trim p = empty *> p
-let trim1 p = empty1 *> p
+let trimchar c = empty *> char c
+let trimstr s = trim @@ string s
 let token s = empty *> string s
 let between p = token "(" *> p <* token ")"
+let emptylist = trimstr "[]" *> return true
 
 let pIdent =
   trim
@@ -86,6 +84,37 @@ let pvar = trim @@ take_while is_iddent_symbol
 let pstring = trim @@ (token "\"" *> take_while is_iddent_symbol) <* token "\""
 let pint = int_of_string <$> trim @@ take_while1 is_digit
 let pbool = choice [ token "true" *> return true; token "false" *> return false ]
+(* let plist pe = tlist <$> pe <* trimchunk "list" *)
+
+(* Pattern *)
+let pnil = token "[]" *> return ppnill
+
+let pptuple pp =
+  sep_by (trimstr ",") pp
+  >>= function
+  | [] -> pp
+  | [ h ] -> return h
+  | h :: tl -> return (pptuple (h :: tl))
+;;
+
+let ppbase ppatern =
+  choice
+    [ between ppatern
+    ; ppint <$> trim pint
+    ; ppbool <$> pbool
+    ; ppvar <$> pvar
+    ; ppstring <$> pstring
+    ]
+;;
+
+let ppattern =
+  fix
+  @@ fun ppatern ->
+  let pp = ppbase ppatern in
+  let pp = pnil <|> pp in
+  let pp = pptuple pp <|> pp in
+  pp
+;;
 
 (* Operation *)
 let peMul pe =
@@ -105,7 +134,7 @@ let peMinus pe =
 ;;
 
 let peEq pe =
-  chainl1 pe (trim @@ (token "==" *> return (fun ex1 ex2 -> e_binop Equal ex1 ex2)))
+  chainl1 pe (trim @@ (token "=" *> return (fun ex1 ex2 -> e_binop Equal ex1 ex2)))
 ;;
 
 let peNotEq pe =
@@ -128,6 +157,14 @@ let peGtq pe =
   chainl1 pe (trim @@ (token ">=" *> return (fun ex1 ex2 -> e_binop Gtq ex1 ex2)))
 ;;
 
+let peAnd pe =
+  chainl1 pe (trim @@ (token "&&" *> return (fun ex1 ex2 -> e_binop And ex1 ex2)))
+;;
+
+let peOr pe =
+  chainl1 pe (trim @@ (token "||" *> return (fun ex1 ex2 -> e_binop Or ex1 ex2)))
+;;
+
 (* Same operation*)
 
 let peApp pe = chainl1 pe (return (fun exp1 exp2 -> e_app exp1 exp2))
@@ -136,7 +173,32 @@ let pif pe =
   trim @@ lift3 e_ifthenelse (token "if" *> pe) (token "then" *> pe) (token "else" *> pe)
 ;;
 
-let pefun pe = trim @@ (token "fun" *> lift2 e_fun pIdent (trim @@ (token "->" *> pe)))
+let pematch expr =
+  let first_parse expr =
+    lift2 (fun pattern result -> pattern, result) (ppattern <* trimstr "->") expr
+  in
+  let elem_parse expr =
+    lift2
+      (fun pattern result -> pattern, result)
+      (trimchar '|' *> ppattern <* trimstr "->")
+      expr
+  in
+  lift2
+    e_match
+    (trimstr "match" *> expr <* trimstr "with")
+    (many1 (elem_parse expr)
+     <|> (first_parse expr >>= fun h -> many (elem_parse expr) >>| fun tl -> h :: tl))
+;;
+
+let petuple pe =
+  sep_by (trimstr ",") pe
+  >>= function
+  | [] -> pe
+  | [ h ] -> return h
+  | h :: tl -> return (e_tuple (h :: tl))
+;;
+
+let pefun pe = trim @@ (token "fun" *> lift2 e_fun ppattern (trim @@ (token "->" *> pe)))
 
 let pelet pe =
   token "let"
@@ -152,8 +214,8 @@ let pexp =
   fix
   @@ fun pexp ->
   let pe = between pexp in
-  let pe = e_var <$> pIdent <|> pe in
   let pe = e_string <$> pstring <|> pe in
+  let pe = e_var <$> pIdent <|> pe in
   let pe = e_bool <$> pbool <|> pe in
   let pe = e_int <$> pint <|> pe in
   let pe = peApp pe <|> pe in
@@ -168,7 +230,11 @@ let pexp =
   let pe = peGt pe <|> pe in
   let pe = peGt pe <|> pe in
   let pe = peGtq pe <|> pe in
+  let pe = peAnd pe <|> pe in
+  let pe = peOr pe <|> pe in
+  let pe = petuple pe <|> pe in
   let pe = pif pe <|> pe in
+  let pe = pematch pe <|> pe in
   let pe = pefun pe <|> pe in
   let pe = pelet pe <|> pe in
   pe
@@ -181,68 +247,5 @@ let pdecl =
 
 let parse_program = many pdecl <* empty
 let parse str = parse_string ~consume:All parse_program str
-
-let test_parse str expected =
-  match parse str with
-  | Ok actual ->
-    let is_eq = List.equal equal_decl expected actual in
-    if is_eq then () else printf "Actual %a\n" pp_program actual;
-    is_eq
-  | Error err ->
-    printf "%s\n" err;
-    false
-;;
-
-let%test _ = test_parse "let f = 5" [ DeclLet (false, "f", EInt 5) ]
-
-let%test _ =
-  test_parse
-    "let rec fact = fun n -> if n < 2 then 1 else n * fact n-1"
-    [ DeclLet
-        ( true
-        , "fact"
-        , EFun
-            ( "n"
-            , EIfThenElse
-                ( EBinop (Lt, EVar "n", EInt 2)
-                , EInt 1
-                , EBinop
-                    (Multi, EVar "n", EBinop (Minus, Eapp (EVar "fact", EVar "n"), EInt 1))
-                ) ) )
-    ]
-;;
-
-let%test _ =
-  test_parse
-    "let vshi = a + 5"
-    [ DeclLet (false, "vshi", EBinop (Plus, EVar "a", EInt 5)) ]
-;;
-
-let%test _ =
-  test_parse
-    "let vshi = if 5 then f5 else dfg"
-    [ DeclLet (false, "vshi", EIfThenElse (EInt 5, EVar "f5", EVar "dfg")) ]
-;;
-
-let%test _ =
-  test_parse
-    "let vshi = if 5 + 5 then 10 else 0"
-    [ DeclLet (false, "vshi", EIfThenElse (EBinop (Plus, EInt 5, EInt 5), EInt 10, EInt 0))
-    ]
-;;
-
-let%test _ =
-  test_parse
-    "let binops  = 5 + 5 * 10 + 10 / 2"
-    [ DeclLet
-        ( false
-        , "binops"
-        , EBinop
-            ( Division
-            , EBinop
-                (Multi, EBinop (Plus, EInt 5, EInt 5), EBinop (Plus, EInt 10, EInt 10))
-            , EInt 2 ) )
-    ]
-;;
 
 (*========================================================================================*)

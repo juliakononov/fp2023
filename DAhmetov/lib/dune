@@ -1,7 +1,7 @@
 (library
  (name DAhmetov_lib)
  (public_name DAhmetov.Lib)
- (modules Ast Parser)
+ (modules Ast Parser Interpret InterpretTest ParserTest)
  (libraries base angstrom)
  (inline_tests)
  (preprocess
