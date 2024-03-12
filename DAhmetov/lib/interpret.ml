@@ -263,6 +263,4 @@ end
 
 module InterpretResult = Interpreter (MONAD_RESULT)
 
-let pp_env fmt environment =
-  KeyMap.iter (fun key data -> fprintf fmt "%s: %a\n" key pp_value data) environment
-;;
+let pp_env fmt = KeyMap.iter (fun key data -> fprintf fmt "%s: %a\n" key pp_value data)
