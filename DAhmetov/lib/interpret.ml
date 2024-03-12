@@ -59,23 +59,12 @@ let print_failure fmt = function
   | PatternMatchErr -> fprintf fmt "Error in pattern matching"
 ;;
 
-module Enviroment (M : MONAD) = struct
-  open M
-
-  let find_decl id env =
-    match KeyMap.find_opt id env with
-    | Some decl -> return decl
-    | None -> fail @@ Unknown_Variable id
-  ;;
-
-  let extend_env arg_name arg_value env = KeyMap.add arg_name arg_value env
-end
-
 module Interpreter (M : MONAD) : sig
   val exec_program : program -> (env, failure) M.t
 end = struct
-  include Enviroment (M)
   open M
+
+  let extend_env arg_name arg_value env = KeyMap.add arg_name arg_value env
 
   let check_mathcing pattern value =
     match pattern, value with
@@ -85,14 +74,14 @@ end = struct
     | _ -> false
   ;;
 
-  let rec fresh_env env = function
-    | (key, value) :: tl ->
-      let new_env = extend_env key value env in
-      fresh_env new_env tl
-    | [] -> env
+  let fresh_env env bindings =
+    List.fold_left (fun acc (key, value) -> extend_env key value acc) env bindings
   ;;
 
-  let rec exec_var var env = find_decl var env
+  let rec exec_var id env =
+    match KeyMap.find_opt id env with
+    | Some decl -> return decl
+    | None -> fail @@ Unknown_Variable id
 
   and exec_binop binop expr1 expr2 env =
     let* val1 = exec expr1 env in
@@ -225,7 +214,7 @@ end = struct
       let* rest_val = exec_tuple rest env in
       (match rest_val with
        | VTuple rest_list -> return (VTuple (expr_val :: rest_list))
-       | _ -> failwith "Expected a tuplee")
+       | _ -> fail @@ Type_Error "Expected a tuple")
 
   and exec expr env =
     match expr with
@@ -272,6 +261,6 @@ end
 
 module InterpretResult = Interpreter (MONAD_RESULT)
 
-let pp_env fmt (enviroment : env) =
-  KeyMap.iter (fun key data -> fprintf fmt "%s: %a\n" key pp_value data) enviroment
+let pp_env fmt environment =
+  KeyMap.iter (fun key data -> fprintf fmt "%s: %a\n" key pp_value data) environment
 ;;
