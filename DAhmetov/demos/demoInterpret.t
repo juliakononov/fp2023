@@ -28,3 +28,13 @@
   > EOF
   binop: <fun>
   res: 2
+  
+  $ ./demoInterpret.exe << EOF
+  > let rec fix = fun f -> (fun x -> f (fix f) x)
+  > let fac = fix (fun self -> (fun n -> if n <= 1 then 1 else n * self (n - 1)))
+  > let a = fac 6
+  > EOF
+  a: 720
+  fac: <fun>
+  fix: <rec fun>
+  

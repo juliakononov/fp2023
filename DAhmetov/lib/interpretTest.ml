@@ -168,3 +168,16 @@ let%expect_test _ =
 binop: <fun>
 res: 2|}]
 ;;
+
+let%expect_test _ =
+  let _ =
+    parse_and_interpret
+      "let rec fix = fun f -> (fun x -> f (fix f) x)\n\
+      \  let fac = fix (fun self -> (fun n -> if n <= 1 then 1 else n * self (n - 1)))\n\
+      \  let a = fac 6"
+  in
+  [%expect {|
+a: 720
+fac: <fun>
+fix: <rec fun>|}]
+;;
