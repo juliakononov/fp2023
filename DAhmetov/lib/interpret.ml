@@ -50,6 +50,7 @@ type failure =
   | Type_Error of string
   | ExecErr of value * value
   | PatternMatchErr
+  | NotImplemented
 
 let print_failure fmt = function
   | Division_by_zero -> fprintf fmt "Division by zero"
@@ -57,6 +58,7 @@ let print_failure fmt = function
   | Type_Error typeerr -> fprintf fmt "Type Error: %S" typeerr
   | ExecErr (val1, val2) -> fprintf fmt "ExecErr : %a # %a" pp_value val1 pp_value val2
   | PatternMatchErr -> fprintf fmt "Error in pattern matching"
+  | NotImplemented -> fprintf fmt "Not implemented"
 ;;
 
 module Interpreter (M : MONAD) : sig
@@ -230,7 +232,7 @@ end = struct
       let* expr_val = exec expr1 env in
       exec_app expr_val arg env
     | EMatch (expr, ptrn) -> exec_match expr ptrn env
-    | _ -> failwith "Not implemented"
+    | _ -> fail NotImplemented
   ;;
 
   let exec_let let_decl env =
