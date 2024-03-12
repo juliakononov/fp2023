@@ -5,7 +5,7 @@
 type id = string [@@deriving eq, show { with_path = false }]
 type decl_rec = bool [@@deriving eq, show { with_path = false }]
 
-type binOp =
+type bin_op =
   | Plus (* + *)
   | Minus (* - *)
   | Multi (* * *)
@@ -53,7 +53,7 @@ type expr =
   | EString of string
   | EBool of bool
   | EVar of id (* Выражения имен переменных *)
-  | EBinop of binOp * expr * expr (* Выражения бинарных операций *)
+  | EBinop of bin_op * expr * expr (* Выражения бинарных операций *)
   | EIfThenElse of expr * expr * expr (* Условный оператор If then else *)
   | ETuple of expr list
   | EApp of expr * expr
