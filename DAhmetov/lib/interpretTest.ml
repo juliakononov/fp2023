@@ -181,3 +181,25 @@ a: 720
 fac: <fun>
 fix: <rec fun>|}]
 ;;
+
+(* let%expect_test _ =
+   let _ = parse_and_interpret "let x = fun (y,a) -> y + a\n      let res = x(5,5)" in
+   [%expect {|
+a: 720
+fac: <fun>
+fix: <rec fun>|}]
+   ;; *)
+
+let%expect_test _ =
+  let _ =
+    parse_and_interpret
+      "let rec fix = (fun f -> (fun x -> f (fix f) x))\n\
+       let fac_cps = fix (fun self -> (fun (n, k) -> if n <= 1 then k 1 else self ((n - \
+       1), (fun x -> k (n * x)))))\n\
+       let a = fac_cps (6, (fun x -> x))"
+  in
+  [%expect {|
+    a: 720
+    fac_cps: <fun>
+    fix: <rec fun> |}]
+;;

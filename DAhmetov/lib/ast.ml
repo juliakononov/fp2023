@@ -39,6 +39,7 @@ type pattern =
   | PInt of int
   | PVar of id
   | PTuple of pattern list
+  | PFun of id * pattern
 [@@deriving eq, show { with_path = false }]
 
 let ppnill = PNill
@@ -73,8 +74,6 @@ let e_app expr1 expr2 = EApp (expr1, expr2)
 let e_match expr lst = EMatch (expr, lst)
 let e_let bool id exp1 exp2 = ELet (bool, id, exp1, exp2)
 let e_fun id exp = EFun (id, exp)
-
-(* let drec bool = DRec bool *)
 
 type decl = DeclLet of decl_rec * id * expr [@@deriving eq, show { with_path = false }]
 

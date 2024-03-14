@@ -121,3 +121,40 @@ let%test _ =
 let%test _ =
   test_parse "let x = (1, 2)" [ DeclLet (false, "x", ETuple [ EInt 1; EInt 2 ]) ]
 ;;
+
+let%test _ =
+  test_parse
+    "let rec fix = (fun f -> (fun x -> f (fix f) x))\n\
+    \  let fac_cps = (fix (fun self -> (fun (n,k) -> if n <= 1 then k 1 else self (n - \
+     1) (fun x -> k (n * x)))))\n\
+    \  let a = fac_cps (6, (fun x -> x))"
+    [ DeclLet
+        ( true
+        , "fix"
+        , EFun
+            ( PVar "f"
+            , EFun
+                (PVar "x", EApp (EApp (EVar "f", EApp (EVar "fix", EVar "f")), EVar "x"))
+            ) )
+    ; DeclLet
+        ( false
+        , "fac_cps"
+        , EApp
+            ( EVar "fix"
+            , EFun
+                ( PVar "self"
+                , EFun
+                    ( PTuple [ PVar "n"; PVar "k" ]
+                    , EIfThenElse
+                        ( EBinop (Ltq, EVar "n", EInt 1)
+                        , EApp (EVar "k", EInt 1)
+                        , EApp
+                            ( EApp (EVar "self", EBinop (Minus, EVar "n", EInt 1))
+                            , EFun
+                                ( PVar "x"
+                                , EApp (EVar "k", EBinop (Multi, EVar "n", EVar "x")) ) )
+                        ) ) ) ) )
+    ; DeclLet
+        (false, "a", EApp (EVar "fac_cps", ETuple [ EInt 6; EFun (PVar "x", EVar "x") ]))
+    ]
+;;

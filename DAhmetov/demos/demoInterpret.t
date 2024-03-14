@@ -37,3 +37,12 @@
   a: 720
   fact: <fun>
   fix: <rec fun>
+
+  $ ./demoInterpret.exe << EOF
+  > let rec fix = (fun f -> (fun x -> f (fix f) x))
+  > let fac_cps = fix (fun self -> (fun (n, k) -> if n <= 1 then k 1 else self ((n - 1), (fun x -> k (n * x)))))
+  > let a = fac_cps (6, (fun x -> x))
+  > EOF
+  a: 720
+  fac_cps: <fun>
+  fix: <rec fun>
