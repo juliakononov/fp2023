@@ -66,8 +66,6 @@ module Interpreter (M : MONAD) : sig
 end = struct
   open M
 
-  let extend_env arg_name arg_value env = KeyMap.add arg_name arg_value env
-
   let check_mathcing pattern value =
     match pattern, value with
     | PString str1, VString str2 when str1 = str2 -> true
@@ -77,7 +75,7 @@ end = struct
   ;;
 
   let fresh_env env bindings =
-    List.fold_left (fun acc (key, value) -> extend_env key value acc) env bindings
+    List.fold_left (fun acc (key, value) -> KeyMap.add key value acc) env bindings
   ;;
 
   let rec exec_var id env =
@@ -202,7 +200,7 @@ end = struct
     | VLRec (let_name, let_val) ->
       (match let_val with
        | VFun (fun_pattern, fun_exp, fun_env) ->
-         let new_fun_env = extend_env let_name app_exp_val fun_env in
+         let new_fun_env = KeyMap.add let_name app_exp_val fun_env in
          let new_fun_val = VFun (fun_pattern, fun_exp, new_fun_env) in
          exec_app new_fun_val app_arg env
        | _ -> fail @@ Unknown_Variable "Invalid function definition in let rec")
@@ -254,7 +252,7 @@ end = struct
       (fun env decl ->
         let* env = env in
         let* name, value = exec_let decl env in
-        let env' = extend_env name value env in
+        let env' = KeyMap.add name value env in
         return env')
       (return KeyMap.empty)
       program
