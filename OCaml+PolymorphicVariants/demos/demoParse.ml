@@ -1,12 +1,10 @@
-(** Copyright 2021-2022, Kakadu and contributors *)
+(** Copyright 2021-2022, Nikita Nemakin *)
 
-(** SPDX-License-Identifier: CC0-1.0 *)
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
-open Lambda_lib
+open Ocaml_pv.Parser
 
 let () =
-  let s = Stdio.In_channel.input_all Stdlib.stdin in
-  match Lambda_lib.Parser.parse s with
-  | Result.Ok ast -> Format.printf "%a\n%!" Printast.pp_named ast
-  | Error _ -> Format.printf "Some error"
+  let str = In_channel.input_all stdin in
+  test_parse str
 ;;
